@@ -236,6 +236,10 @@ export async function serve(options: CastariServerOptions = {}) {
         },
 
         websocket: {
+            // Keep connection alive as long as sandbox is running
+            idleTimeout: 0,
+            sendPings: true,
+
             open(ws) {
                 activeConnection = ws
 

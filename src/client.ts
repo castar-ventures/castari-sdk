@@ -56,6 +56,7 @@ export class CastariClient {
     private ws?: WebSocket
     private options: ClientOptions
     private messageHandlers: ((message: WSOutputMessage) => void)[] = []
+    private closeHandlers: ((code: number, reason: string) => void)[] = []
     private sandboxId?: string
     private resolvedClientId?: string
     private resolvedPlatformApiKey?: string
@@ -64,6 +65,11 @@ export class CastariClient {
         this.options = {
             ...options,
         }
+    }
+
+    /** Check if the WebSocket is currently connected */
+    isConnected(): boolean {
+        return this.ws?.readyState === WebSocket.OPEN
     }
 
     async start() {
@@ -185,8 +191,9 @@ export class CastariClient {
                 reject(error)
             }
 
-            this.ws.onclose = () => {
-                if (this.options.debug) console.log('👋 Disconnected')
+            this.ws.onclose = (event) => {
+                if (this.options.debug) console.log(`👋 Disconnected (code=${event.code})`)
+                this.closeHandlers.forEach(handler => handler(event.code, event.reason))
             }
         })
     }
@@ -295,6 +302,14 @@ export class CastariClient {
         this.messageHandlers.push(handler)
         return () => {
             this.messageHandlers = this.messageHandlers.filter(h => h !== handler)
+        }
+    }
+
+    /** Register a callback for when the WebSocket connection closes */
+    onClose(handler: (code: number, reason: string) => void) {
+        this.closeHandlers.push(handler)
+        return () => {
+            this.closeHandlers = this.closeHandlers.filter(h => h !== handler)
         }
     }
 
